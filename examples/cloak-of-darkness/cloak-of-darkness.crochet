@@ -1,0 +1,254 @@
+% crochet
+
+relation Item* name: Name;
+relation Item* description: Description;
+relation Room* to: Direction* lays: Room;
+relation Room* lit;
+relation Player* visited: Room*;
+relation Player* examined: Item*;
+relation Room* times-disturbed: N;
+relation Player* at: Room;
+relation Item* on: Place;
+
+actor #street;
+
+actor #foyer :: room {
+  name: "The Foyer";
+  description: "An empty room. There's nobody around.";
+  to: "south" lays: #bar;
+  to: "west" lays: #cloakroom;
+  to: "north" lays: #street;
+  lit;
+}
+
+actor #bar :: room {
+  name: "The Bar";
+  description: "It's dark here. You're afraid you would disturb something.";
+  to: "north" lays: #foyer;
+  times-disturbed: 0;
+}
+
+actor #cloakroom :: room {
+  name: "The Cloakroom";
+  description: "There's a small brass hook fixed on the wall.";
+  to: "east" lays: #foyer;
+  lit;
+}
+
+
+actor #cloakroom-floor :: place {
+  name: "The cloakroom's floor";
+  description: "The floor.";
+  on: #cloakroom;
+}
+
+actor #hook :: place {
+  name: "Hook";
+  description: "A small brass hook.";
+  on: #cloakroom;
+}
+
+actor #cloak :: item, wearable {
+  name: "Cloak";
+  description: "A black velvet cloak.";
+  on: #player;
+}
+
+actor #player :: player {
+  at: #foyer;
+}
+
+do {
+  goto main;
+}
+
+scene main {
+  "Cloak of Darkness" title show;
+  
+  say:
+    "At long last you'd arrived at the opera house. A spacious hall stands
+    before you, splendidly decorated in red and gold, with glittering
+    chandeliers overhead.";
+
+  say:
+    "You did send a message saying you would be late. But you did not expect
+    the weather outside to be that bad. Even now, though the door to the
+    street behind you was tightly shut, you couldn't help but think about
+    the snow storm.";
+
+  say:
+    "From where you stand, there's a small door to the south, and a larger
+    passageway to the west.";
+
+  goto main-loop;
+}
+
+scene main-loop {
+  trigger action;
+  goto main-loop;
+}
+
+repeatable action "Go [Direction]"
+when
+  #player at: Room,
+  Room to: Direction lays: Target,
+  Target name: Name,
+  Target description: Description
+  if Target =/= #street
+{
+  fact #player at: Target;
+  say: Name;
+  say: Description;
+}
+
+repeatable action "Go [Direction]"
+when
+  #player at: Room,
+  Room to: Direction lays: #street
+{
+  say:
+    "You place your hands on the doorknob... and shudder at the mere
+    thought of going outside. You are NOT sitting in that snowstorm
+    again, not for a good few hours, at least.";
+}
+
+repeatable action "Look at yourself"
+when #player at: Room
+{
+  match {
+    when #player at: Room, Room lit {
+      say:
+        "Despite the ragged state in which you had arrive at the opera---and
+        you had made sure to fix your clothes upon your arrival---you didn't
+        look too bad.";
+
+    }
+
+    else {
+      say:
+        "It's too dim here to see anything properly, but you're sure you didn't
+        look too bad.";
+    }
+  };
+
+  say:
+    "At least not in your own, very unbiased opinion.";
+
+  match {
+    when #cloak on: #player {
+      say:
+        "You're wearing a black velvet cloak, which you would say nicely
+        compliments your features.";
+    }
+    else {}
+  };
+}
+
+// Bar actions
+repeatable action "Look around"
+when
+  #player at: #bar,
+  #cloak on: #player,
+  #bar times-disturbed: N
+{
+  say:
+    "In the dark? Heavens knows what you'd end breaking here...";
+
+  fact #bar times-disturbed: (N + 1);
+}
+
+action "Look around"
+when
+  #player at: #bar,
+  not #cloak on: #player
+{
+  say:
+    "When you arrived at the grandiose foyer you were expecting the rest of
+    the house to follow suit. Alast, that was not the case. The bar was in
+    a much rougher state than your own.";
+
+  say:
+    "From the balcony to the floors. Everything was covered in dust. This
+    place did not seem to be used for a long, long time. It was no wonder
+    that there was no one around.";
+
+  fact #player examined: #bar;
+}
+
+action "Examine the floor"
+when
+  #player at: #bar,
+  not #cloak on: #player,
+  #player examined: #bar,
+  #bar times-disturbed: N
+  if N <= 2
+{
+  say:
+    "There's a message neatly scrawled in the dust on the floor. It reads:
+    \"You won\".";
+
+  goto ending;
+}
+
+action "Examine the floor"
+when
+  #player at: #bar,
+  not #cloak on: #player,
+  #player examined: #bar,
+  #bar times-disturbed: N
+  if N > 2
+{
+  say:
+    "There seems to be something scrawled in the dust on the floor, but
+    you can barely make out the letters. \"Y-u l-st\".";
+
+  goto ending;
+}
+
+// Cloakroom actions
+repeatable action "Examine [Name]"
+when
+  #player at: #cloakroom,
+  Thing on: #cloakroom,
+  Thing description: Description,
+  Thing name: Name,
+  not #player examined: Thing
+  if Thing :: place
+{
+  say: Description;
+  fact #player examined: Thing;
+}
+
+repeatable action "Place cloak on [Name]"
+when
+  #player at: #cloakroom,
+  #cloak on: #player,
+  Thing on: #cloakroom,
+  Thing description: Description,
+  Thing name: Name,
+  #player examined: Thing
+  if Thing :: place
+{
+  say:
+    "You place your cloak on [Name].";
+
+  fact #cloak on: Thing;
+}
+
+repeatable action "Take cloak from [Name]"
+when
+  #player at: #cloakroom,
+  Thing on: #cloakroom,
+  #cloak on: Thing,
+  Thing description: Description,
+  Thing name: Name
+  if Thing :: place
+{
+  say:
+    "You take your cloak from [Name].";
+
+  fact #cloak on: #player;
+}
+
+
+scene ending {}
