@@ -1,0 +1,180 @@
+%[
+open Fable.Core
+open Crochet.VM.Syntax.AST
+
+[<Emit("Number($0)")>]
+let parseNumber s : double = jsNative
+
+[<Emit("BigInt($0)")>]
+let parseInt s : bigint = jsNative
+
+[<Emit("JSON.parse($0)")>]
+let parseJson s : string = jsNative
+
+let parseString (s:string) =
+  parseJson ((s.Replace("\r\n", "\\n")).Replace("\n", "\\n"))
+
+let fixNumber (s:string) = s.Replace("_", "")
+]%
+
+Crochet : Program {
+  program =
+    | header ds:declaration* space* end
+      %[ program ds ]%
+
+
+  // -- Declarations
+  declaration =
+    | actorDeclaration
+    | relationDeclaration
+    | doDeclaration
+
+  actorDeclaration =
+    | actor_ n:actorName s<";">
+      %[ DActor n ]%
+
+  relationDeclaration =
+    | relation_ s:logicSignature<relationPart> ";"
+      %[ DRelation s ]%
+
+  relationPart =
+    | n:name s<"*">
+      %[ RPTMany n ]%
+    | n:name
+      %[ RPTOne n ]%
+
+  doDeclaration =
+    | do_ statementBlock<statements>
+
+
+  // -- Statements
+  statements =
+    | factStatement
+    | forgetStatement
+  
+  factStatement =
+    | fact_ f:logicSignature<expression>
+      %[ SFact f ]%
+
+  forgetStatement =
+    | forget_ f:logicSignature<expression>
+      %[ SForget f ]%
+
+
+  // -- Expressions
+  expression =
+    | primaryExpression
+
+  primaryExpression =
+    | x:integer   %[ EInteger x ]%
+    | x:text      %[ EText x ]%
+    | nothing     %[ ENothing ]%
+    | true        %[ ETrue ]%
+
+  // -- Primitives
+  integer = t_integer
+  float = t_float
+  text = t_text
+  true = true_
+  nothing = nothing_
+
+
+  // -- Higher-Order
+  statementBlock<typ> =
+    | s<"{"> xs:nonemptyListOf<type, s<";">> ";"? s<"}">
+      %[ xs ]%
+
+  logicSignature<t> =
+    | s:t kws:logicSignaturePair<t>+
+      %[ LSKeyword (s, kws) ]%
+    | s:t n:atom
+      %[ LSUnary (s, n) ]%
+  
+  logicSignaturePair<t> =
+    | kw:keyword p:t
+      %[ (kw, p) ]%
+
+  s<p> = space* p
+
+
+  // -- Lexical rules -------------------------------------------------
+  header (a file header) = "%" hs* "crochet" nl
+  hs = " " | "\t"
+  nl = "\n" | "\r"
+  line = (~nl any)*
+  comment (a comment) = "//" line
+  space += comment
+
+  atom_start = "a".."z"
+  atom_rest = letter | digit | "-"
+  t_atom (an atom) = atom_start atom_rest*
+
+  t_keyword (a keyword) = t_atom ":"
+
+  t_actor_name (an actor name) = "#" t_atom
+
+  name_start = "A".."Z" | "_"
+  name_rest = letter | digit | "-"
+  t_name (a name) = name_start name_rest*
+
+  t_infix_symbol =
+    | "+" | "-" | "*" | "/"
+    | "<" | ">" | "<=" | ">="
+    | "===" | "=/="
+
+  dec_digit = "0".."9" | "_"
+
+  t_integer = x:t_integer_b %[ parseInt (fixNumber x) ]%
+  t_integer_b (an integer) =
+    | ~"_" dec_digit+
+
+  t_float = x:t_float_b %[ parseNumber (fixNumber x) ]%
+  t_float_b (a floating-point number) =
+    | ~"_" dec_digit+ "." dec_digit+
+
+  text_character =
+    | "\\" "\""
+    | ~"\"" any
+
+  t_text = x:t_text_b %[ parseString x ]%
+  t_text_b (a text) =
+    | "\"" text_character* "\""
+
+  kw<word> = s<word> ~atom_rest
+
+  true_ = kw<"true">
+  false_ = kw<"false">
+  nothing_ = kw<"nothing">
+  scene_ = kw<"scene">
+  command_ = kw<"command">
+  do_ = kw<"do">
+  return_ = kw<"return">
+  goto_ = kw<"goto">
+  let_ = kw<"let">
+  end_ = kw<"end">
+  actor_ = kw<"actor">
+  relation_ = kw<"relation">
+  fact_ = kw<"fact">
+  forget_ = kw<"forget">
+  search_ = kw<"search">
+  action_ = kw<"action">
+  when_ = kw<"when">
+  choose_ = kw<"choose">
+  if_ = kw<"if">
+  and_ = kw<"and">
+  or_ = kw<"or">
+  not_ = kw<"not">
+  context_ = kw<"context">
+  trigger_ = kw<"trigger">
+  then_ = kw<"then">
+  else_ = kw<"else">
+  match_ = kw<"match">
+  repeatable_ = kw<"repeatable">
+
+  reserved =
+    | true_ | false_ | nothing_ 
+    | scene_ | command_ | do_ | return_ | goto_ | let_ | end_
+    | actor_ | relation_ | fact_ | search_ | forget_ | action_
+    | when_ | choose_ | if_ | and_ | or_ | not_ | context_ | trigger_
+    | then_ | else_ | match_ | repeatable_
+}

@@ -97,7 +97,6 @@ module Database =
 
   and private findPredicate patterns pred env db =
     let join e (k, p) =
-      printfn "join %A (%A, %A) %A" e k p env
       match e with
       | None -> None
       | Some (env, e) ->
@@ -109,7 +108,6 @@ module Database =
     let parameters = PredicateRelation.parameters pred
     let bindings = List.zip parameters patterns
     let resultEnv = findFirstPredicate patterns cases env db
-    printfn "Result: %A - %A - %A" env bindings (List.ofSeq resultEnv)
     seq {
       for e in resultEnv do
         match List.fold join (Some (env, e)) bindings with
@@ -131,14 +129,12 @@ module Database =
               for e in find patterns relation env db do
                 yield! depthFirst rs constraints e db
           | None ->
-              printfn "Undefined relation %s" name
               raise (SearchErrorException (SEUndefinedRelation name))
       | [] ->
           match evalConstraint constraints env with
           | Ok VNothing -> ignore None
           | Ok _ -> yield env
           | Error e ->
-              printfn "Constraint error %A" e
               raise (SearchErrorException (SEConstraintError e))
     }
 

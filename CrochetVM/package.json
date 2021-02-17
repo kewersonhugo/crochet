@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "dotnet fable CrochetVM.fsproj --outDir build --sourceMaps",
+    "build-grammar": "fohm compile source/grammar/crochet.ohm --name Crochet --outDir source/generated"
+  },
+  "name": "@origamitower/crochet",
+  "version": "1.0.0",
+  "dependencies": {
+    "@origamitower/fohm": "^1.1.0"
+  }
+}

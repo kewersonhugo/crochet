@@ -6,12 +6,25 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="utils/extensions.fs" />
-    <Compile Include="runtime/intrinsics.fs" />
-    <Compile Include="logic/ir.fs" />
-    <Compile Include="logic/unification.fs" />
-    <Compile Include="logic/tree.fs" />
-    <Compile Include="logic/database.fs" />
+    <Compile Include="source/utils/extensions.fs" />
+    <Compile Include="source/utils/continuation.fs" />
+    <!-- back-end -->
+    <Compile Include="source/ir/ast.fs" />
+    <!-- runtime -->
+    <Compile Include="source/runtime/intrinsics.fs" />
+    <Compile Include="source/logic/ir.fs" />
+    <Compile Include="source/logic/unification.fs" />
+    <Compile Include="source/logic/tree.fs" />
+    <Compile Include="source/logic/database.fs" />
+    <!-- front-end -->
+    <Compile Include="source/syntax/ast.fs" />
+    <Compile Include="source/generated/Crochet.fs" />
+    <Compile Include="source/syntax/parser.fs" />
+    <Compile Include="source/syntax/to-anf.fs" />
+    <Compile Include="source/app.fs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Fable.Core" Version="3.2.4" />
+  </ItemGroup>
 </Project>

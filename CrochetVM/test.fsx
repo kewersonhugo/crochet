@@ -1,9 +1,13 @@
-#load "./utils/extensions.fs"
-#load "./runtime/intrinsics.fs"
-#load "./logic/ir.fs"
-#load "./logic/unification.fs"
-#load "./logic/tree.fs"
-#load "./logic/database.fs"
+#load "source/utils/extensions.fs"
+#load "source/utils/continuation.fs"
+#load "source/ir/ast.fs"
+#load "source/runtime/intrinsics.fs"
+#load "source/logic/ir.fs"
+#load "source/logic/unification.fs"
+#load "source/logic/tree.fs"
+#load "source/logic/database.fs"
+#load "source/syntax/ast.fs"
+#load "source/syntax/to-anf.fs"
 
 open Crochet.VM.Utils.Extensions
 open Crochet.VM.Runtime.Intrinsics
@@ -57,3 +61,22 @@ let Pred2 = {
   Constraint = CBinOp (OpEqual, CVariable "From", CVariable "From")
 }
 Database.searchRealise Pred2 db
+
+
+open Crochet.VM.Syntax.AST
+let Prog =
+  {
+    Declarations = [|
+      DActor "erin"
+      DActor "saga"
+      DRelation (LSKeyword (RPTMany "X", [|("likes:", RPTMany "Y")|]))
+      DDo [|
+        SLet ("X", EText "x")
+        SLet ("Y", EText "y")
+        SFact (LSKeyword (EActor "erin", [|("likes:", (EActor "saga"))|]))
+        SFact (LSUnary (EVariable "X", "alive"))
+      |]
+    |]
+  }
+
+Crochet.VM.Syntax.ToANF.lowerProgram Prog
