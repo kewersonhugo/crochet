@@ -18,6 +18,12 @@ module UnificationEnv =
     | None -> Some (Map.add name value env)
     | Some _ -> None
 
+  let define name value (env:UnificationEnvironment<'t>) =
+    Map.update name value env
+
+  let defineAll pairs (env:UnificationEnvironment<'t>) =
+    pairs |> Seq.fold (fun e (k, v) -> define k v e) env
+
   let lookup name (env:UnificationEnvironment<'t>) =
     Map.tryFind name env
 
