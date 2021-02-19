@@ -23,8 +23,8 @@ type ParseOptions =
   { filename: string option }
 
 
-open Crochet.VM.Syntax.AST
 open Fable.Core
+open Crochet.VM.Syntax.AST
 
 [<Emit("Number($0)")>]
 let parseNumber s : double = jsNative
@@ -37,6 +37,9 @@ let parseJson s : string = jsNative
 
 let parseString (s:string) =
   parseJson ((s.Replace("\r\n", "\\n")).Replace("\n", "\\n"))
+
+let escaped (s:string) =
+  parseString ("\"" + s.Replace("\"", "\\\"") + "\"")
 
 let fixNumber (s:string) = s.Replace("_", "")
 
@@ -52,10 +55,13 @@ let private visitor =
     "program_alt0" ==> fun (meta:Meta) _0 ds _2 _3 ->
        program ds 
               
-    "actorDeclaration_alt0" ==> fun (meta:Meta) _0 n _2 ->
+    "declarations_alt0" ==> fun (meta:Meta) xs _1 ->
+       xs 
+              
+    "actorDeclaration_alt0" ==> fun (meta:Meta) _0 n ->
        DActor n 
               
-    "relationDeclaration_alt0" ==> fun (meta:Meta) _0 s _2 ->
+    "relationDeclaration_alt0" ==> fun (meta:Meta) _0 s ->
        DRelation s 
               
     "relationPart_alt0" ==> fun (meta:Meta) n _1 ->
@@ -64,23 +70,92 @@ let private visitor =
     "relationPart_alt1" ==> fun (meta:Meta) n ->
        RPTOne n 
               
+    "actionDeclaration_alt0" ==> fun (meta:Meta) _0 t _2 p b ->
+       DAction(t, p, b) 
+              
+    "beforeDeclaration_alt0" ==> fun (meta:Meta) _0 p b ->
+       DBefore(p, b) 
+              
+    "afterDeclaration_alt0" ==> fun (meta:Meta) _0 p b ->
+       DAfter(p, b) 
+              
+    "doDeclaration_alt0" ==> fun (meta:Meta) _0 xs ->
+       DDo xs 
+              
+    "predicate_alt0" ==> fun (meta:Meta) cs _1 c ->
+       predicate cs c 
+              
+    "predicate_alt1" ==> fun (meta:Meta) cs ->
+       predicate cs (CLiteral LTrue) 
+              
+    "constraint_alt0" ==> fun (meta:Meta) l op r ->
+       CBinOp (op, l, r) 
+              
+    "constraint_alt1" ==> fun (meta:Meta) _0 l ->
+       CNot l 
+              
+    "constraint_alt2" ==> fun (meta:Meta) n ->
+       CVariable n 
+              
+    "constraint_alt3" ==> fun (meta:Meta) l ->
+       CLiteral l 
+              
+    "constraint_op_alt0" ==> fun (meta:Meta) _0 ->
+       OpAnd 
+              
+    "constraint_op_alt1" ==> fun (meta:Meta) _0 ->
+       OpOr 
+              
+    "constraint_op_alt2" ==> fun (meta:Meta) _0 ->
+       OpEq 
+              
+    "constraint_op_alt3" ==> fun (meta:Meta) _0 ->
+       OpNotEq 
+              
+    "constraint_op_alt4" ==> fun (meta:Meta) _0 ->
+       OpGt 
+              
+    "constraint_op_alt5" ==> fun (meta:Meta) _0 ->
+       OpGte 
+              
+    "constraint_op_alt6" ==> fun (meta:Meta) _0 ->
+       OpLt 
+              
+    "constraint_op_alt7" ==> fun (meta:Meta) _0 ->
+       OpLte 
+              
+    "statement_alt1" ==> fun (meta:Meta) e ->
+       SExpression e 
+              
+    "letStatement_alt0" ==> fun (meta:Meta) _0 n _2 e ->
+       SLet (n, e) 
+              
     "factStatement_alt0" ==> fun (meta:Meta) _0 f ->
        SFact f 
               
     "forgetStatement_alt0" ==> fun (meta:Meta) _0 f ->
        SForget f 
               
-    "primaryExpression_alt0" ==> fun (meta:Meta) x ->
-       EInteger x 
+    "primaryExpression_alt0" ==> fun (meta:Meta) n ->
+       EActor n 
               
-    "primaryExpression_alt1" ==> fun (meta:Meta) x ->
-       EText x 
+    "primaryExpression_alt1" ==> fun (meta:Meta) l ->
+       ELiteral l 
               
-    "primaryExpression_alt2" ==> fun (meta:Meta) _0 ->
-       ENothing 
+    "primaryExpression_alt2" ==> fun (meta:Meta) _0 e _2 ->
+       e 
               
-    "primaryExpression_alt3" ==> fun (meta:Meta) _0 ->
-       ETrue 
+    "integer_alt0" ==> fun (meta:Meta) x ->
+       LInteger x 
+              
+    "text_alt0" ==> fun (meta:Meta) x ->
+       LText x 
+              
+    "true_alt0" ==> fun (meta:Meta) _0 ->
+       LTrue 
+              
+    "nothing_alt0" ==> fun (meta:Meta) _0 ->
+       LFalse 
               
     "statementBlock_alt0" ==> fun (meta:Meta) _0 xs _2 _3 ->
        xs 
@@ -93,6 +168,15 @@ let private visitor =
               
     "logicSignaturePair_alt0" ==> fun (meta:Meta) kw p ->
        (kw, p) 
+              
+    "interpolateTextPart_alt0" ==> fun (meta:Meta) _0 x ->
+       TPStatic (escaped x) 
+              
+    "interpolateTextPart_alt1" ==> fun (meta:Meta) _0 x _2 ->
+       TPDynamic x 
+              
+    "interpolateTextPart_alt2" ==> fun (meta:Meta) x ->
+       TPStatic x 
               
     "t_integer_alt0" ==> fun (meta:Meta) x ->
        parseInt (fixNumber x) 
@@ -110,21 +194,28 @@ let private primParser: obj  =
     """
     Crochet {
       program =
-        | header declaration* space* end -- alt0
+        | header declarations space* end -- alt0
+              
+      
+      declarations =
+        | listOf<declaration, s<";">> s<";">? -- alt0
               
       
       declaration =
         | actorDeclaration -- alt0
         | relationDeclaration -- alt1
-        | doDeclaration -- alt2
+        | actionDeclaration -- alt2
+        | beforeDeclaration -- alt3
+        | afterDeclaration -- alt4
+        | doDeclaration -- alt5
               
       
       actorDeclaration =
-        | actor_ actorName s<";"> -- alt0
+        | actor_ actorName -- alt0
               
       
       relationDeclaration =
-        | relation_ logicSignature<relationPart> ";" -- alt0
+        | relation_ logicSignature<relationPart> -- alt0
               
       
       relationPart =
@@ -132,13 +223,58 @@ let private primParser: obj  =
         | name -- alt1
               
       
-      doDeclaration =
-        | do_ statementBlock<statements> -- alt0
+      actionDeclaration =
+        | action_ interpolateText<name> when_ predicate statementBlock<logicStmt> -- alt0
               
       
-      statements =
+      beforeDeclaration =
+        | before_ predicate statementBlock<logicStmt> -- alt0
+              
+      
+      afterDeclaration =
+        | after_ predicate statementBlock<logicStmt> -- alt0
+              
+      
+      doDeclaration =
+        | do_ statementBlock<logicStmt> -- alt0
+              
+      
+      predicate =
+        | nonemptyLisOf<clause, s<",">> if_ constraint -- alt0
+        | nonemptyListOf<clause, s<",">> -- alt1
+              
+      
+      constraint =
+        | constraint constraintOp constraint -- alt0
+        | not_ constraint -- alt1
+        | name -- alt2
+        | literal -- alt3
+              
+      
+      constraint_op =
+        | and_ -- alt0
+        | or_ -- alt1
+        | s<"==="> -- alt2
+        | s<"=/="> -- alt3
+        | s<">"> -- alt4
+        | s<">="> -- alt5
+        | s<"<"> -- alt6
+        | s<"<="> -- alt7
+              
+      
+      statement =
+        | letStatement -- alt0
+        | expression -- alt1
+              
+      
+      logicStmt =
         | factStatement -- alt0
         | forgetStatement -- alt1
+        | statement -- alt2
+              
+      
+      letStatement =
+        | let_ name s<"="> expression -- alt0
               
       
       factStatement =
@@ -154,6 +290,12 @@ let private primParser: obj  =
               
       
       primaryExpression =
+        | actor_name -- alt0
+        | literal -- alt1
+        | "(" expression ")" -- alt2
+              
+      
+      literal =
         | integer -- alt0
         | text -- alt1
         | nothing -- alt2
@@ -162,10 +304,6 @@ let private primParser: obj  =
       
       integer =
         | t_integer -- alt0
-              
-      
-      float =
-        | t_float -- alt0
               
       
       text =
@@ -180,8 +318,12 @@ let private primParser: obj  =
         | nothing_ -- alt0
               
       
+      actor_name =
+        | t_actor_name -- alt0
+              
+      
       statementBlock<typ> =
-        | s<"{"> nonemptyListOf<type, s<";">> ";"? s<"}"> -- alt0
+        | s<"{"> listOf<type, s<";">> s<";">? s<"}"> -- alt0
               
       
       logicSignature<t> =
@@ -195,6 +337,16 @@ let private primParser: obj  =
       
       s<p> =
         | space* p -- alt0
+              
+      
+      interpolateTextPart<p> =
+        | "\\" any -- alt0
+        | "[" s<p> s<"]"> -- alt1
+        | ~"\"" any -- alt2
+              
+      
+      interpolateText<p> (a,t,e,x,t,w,i,t,h,i,n,t,e,r,p,o,l,a,t,i,o,n) =
+        | s<"\""> interpolateTextPart<p>* "\"" -- alt0
               
       
       header (a,f,i,l,e,h,e,a,d,e,r) =

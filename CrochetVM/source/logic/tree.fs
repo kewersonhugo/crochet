@@ -1,9 +1,9 @@
 module Crochet.VM.Logic.Tree
 
-open Crochet.VM.Logic.IR
 open Crochet.VM.Logic.Unification
 open Crochet.VM.Utils.Extensions
 open Crochet.VM.Runtime.Intrinsics
+open Crochet.VM.Logic.IR
 
 type RelationTree =
   | RTOne of RelationType * (Value * RelationTree) option
@@ -12,9 +12,9 @@ type RelationTree =
 
 let empty treeType =
   match treeType with
-  | TOne t -> RTOne (t, None)
-  | TMany t -> RTMany (t, Map.empty)
-  | TEnd -> RTEnd
+  | IR.RTOne t -> RTOne (t, None)
+  | IR.RTMany t -> RTMany (t, Map.empty)
+  | IR.RTEnd -> RTEnd
 
 let rec insert fact tree =
   match (fact, tree) with
@@ -82,6 +82,6 @@ let rec find patterns tree env =
 
 let getType tree =
   match tree with
-  | RTOne (t, _) -> TOne t
-  | RTMany (t, _) -> TMany t
-  | RTEnd -> TEnd
+  | RTOne (t, _) -> IR.RTOne t
+  | RTMany (t, _) -> IR.RTMany t
+  | RTEnd -> IR.RTEnd

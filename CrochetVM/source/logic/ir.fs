@@ -27,6 +27,6 @@ type Constraint =
   | CVariable of name:string
 
 type RelationType =
-  | TOne of RelationType
-  | TMany of RelationType
-  | TEnd
+  | RTOne of RelationType
+  | RTMany of RelationType
+  | RTEnd

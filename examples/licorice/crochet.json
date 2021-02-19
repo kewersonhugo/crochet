@@ -1,0 +1,8 @@
+{
+  "package": "web",
+  "title": "Licorice",
+  "source": "licorice.crochet",
+  "output_directory": "www",
+  "html": "index.html.template",
+  "assets": ["ui.js"]
+}

@@ -1,24 +1,28 @@
-Declaration ::
-  | type <TypeId>
-  | relation <Signature>
-  | define <Atom> :: <NsType>
-  | scene <Atom> when <Predicate> do <Statement ...> end
-  | when <Predicate> do <Statement ...> end
-  | do <Statement ...> end
-  | command <Signature> do <Statement ...> end
-  | command <Signature> = foreign <Identifier>(<Identifier> ...)
-  ;
+Crochet is a layered language for generative narratives.
 
-Signature ::
-  | <Type> <<Keyword> : <Type> ...>
-  | <Type> <Atom>
-  ;
+Logical language:
 
-Statement ::
-  | set <SignatureUse>
-  | unset <SignatureUse>
-  | say <Expr>
-  | yield
-  | go to <Scene>
-  | <Expr>
-  ;
+  relation Sig.
+  actor Name :: Role*.
+  when Pred { Behaviour }.
+  [repeatable] action Name when Pred { Behaviour }.
+  scene Name { Behaviour }.
+  context Name { when/action/scene* }.
+
+Functional/imperative language:
+
+  command Sig { Behaviour }.
+  do { Behaviour }.
+
+
+  let X = Expr.
+  S.N.
+  match { when*, else }.
+  invoke.
+
+  goto Scene.
+  fact Pred.
+  forget Pred.
+  enable [only] Context.
+  disable Context.
+

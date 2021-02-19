@@ -5,3 +5,6 @@ templates/web/
 !templates/web/crochet.css
 !templates/web/index.html
 examples/*/www
+.ionide
+bin/
+obj/

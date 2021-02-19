@@ -1,0 +1,9 @@
+% crochet
+
+command wait-click = wait-click();
+
+command page {
+  wait-click;
+  new-page;
+}
+

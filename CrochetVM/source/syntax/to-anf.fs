@@ -42,10 +42,11 @@ let signatureToValues signature =
 let signatureToPair signature =
   (signatureToName signature, signatureToValues signature)
 
-let lowerRelationType typ =
-  match typ with
-  | RPTOne _ -> IR.RTOne
-  | RPTMany _ -> IR.RTMany
+let rec lowerRelationTypes types =
+  match types with
+  | (RPTOne _ :: rest) -> IR.RTOne (lowerRelationTypes rest)
+  | (RPTMany _ :: rest)-> IR.RTMany (lowerRelationTypes rest)
+  | [] -> IR.RTEnd
 
 let rec normaliseName f m expr k =
   let rec go value =
@@ -74,19 +75,20 @@ let getComplex expr =
   | IR.EAtomic x -> IR.CEAtomic x
   | _ -> failwithf "internal: expected complex expression"
 
+let lowerLiteral x =
+  match x with
+  | LInteger x -> IR.LInteger x
+  | LText x -> IR.LText x
+  | LFalse -> IR.LFalse
+  | LTrue -> IR.LTrue
+
 let rec lowerExpression meta expr =
   cont {
     match expr with
     | EVariable x ->
         return IR.EAtomic(IR.AEVariable x)
-    | EInteger i ->
-        return IR.EAtomic(IR.AELiteral(IR.LInteger i))
-    | EText t ->
-        return IR.EAtomic(IR.AELiteral(IR.LText t))
-    | ENothing ->
-        return IR.EAtomic(IR.AELiteral(IR.LFalse))
-    | ETrue ->
-        return IR.EAtomic(IR.AELiteral(IR.LTrue))
+    | ELiteral x ->
+        return IR.EAtomic(IR.AELiteral (lowerLiteral x))
     | EActor name ->
         return IR.EComplex(IR.CEActor name)
   }
@@ -126,15 +128,68 @@ let rec lowerStatements meta stmts =
         return IR.EAtomic(IR.AELiteral(IR.LFalse))
   }
 
+let lowerInterpolation f text =
+  let lower f part =
+    match part with
+    | TPStatic x -> IR.TPStatic x
+    | TPDynamic x -> IR.TPDynamic x
+  Seq.map (lower f) text
+  |> List.ofSeq
+
+let lowerPattern pattern =
+  match pattern with
+  | LPVariable name -> IR.PVariable name
+  | LPWildcard -> IR.PWildcard
+  | LPActor name -> IR.PActor name
+  | LPLiteral x -> IR.PLiteral (lowerLiteral x)
+
+let lowerConstraintOp op =
+  match op with
+  | OpAnd -> IR.OpAnd
+  | OpOr -> IR.OpOr
+  | OpEq -> IR.OpEqual
+  | OpNotEq -> IR.OpNotEqual
+  | OpGt -> IR.OpGreaterThan
+  | OpGte -> IR.OpGreaterOrEqual
+  | OpLt -> IR.OpLessThan
+  | OpLte -> IR.OpLessOrEqual
+
+let rec lowerConstraint c =
+  match c with
+  | CBinOp (op, l, r) -> IR.CBinOp (lowerConstraintOp op, lowerConstraint l, lowerConstraint r)
+  | CNot c -> IR.CNot (lowerConstraint c)
+  | CVariable n -> IR.CVariable n
+  | CLiteral x -> IR.CLiteral (lowerLiteral x)
+
+let lowerClause clause =
+  let (name, args) = signatureToPair clause
+  (name, List.map lowerPattern args)
+
+let lowerPredicate (pred:Predicate) : IR.Predicate =
+  {
+    Clauses = Seq.map lowerClause pred.Clauses |> List.ofSeq
+    Constraint = lowerConstraint pred.Constraint
+  }
+
 let rec lowerDeclaration meta decl =
   match decl with
   | DActor name -> [IR.DActor name]
   | DRelation s ->
       let name = signatureToName s
-      let types = signatureToValues s |> List.map lowerRelationType
+      let types = lowerRelationTypes (signatureToValues s)
       [IR.DRelation (name, types)]
+  | DAction (title, pred, body) ->
+      let body = lowerStatements meta (List.ofSeq body) id
+      [IR.DAction (lowerInterpolation id title, lowerPredicate pred, body)]
+  | DBefore (pred, body) ->
+      let body = lowerStatements meta (List.ofSeq body) id
+      [IR.DEvent (IR.ETBefore, lowerPredicate pred, body)]
+  | DAfter (pred, body) ->
+      let body = lowerStatements meta (List.ofSeq body) id
+      [IR.DEvent (IR.ETAfter, lowerPredicate pred, body)]
   | DDo stmts ->
-      [IR.DDo (lowerStatements meta (List.ofSeq stmts) id)]
+      let body = lowerStatements meta (List.ofSeq stmts) id
+      [IR.DDo body]
 
 let lowerProgram (prog:Program) : IR.Program =
   let meta = Meta.empty

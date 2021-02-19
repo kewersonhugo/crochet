@@ -14,27 +14,36 @@ let parseJson s : string = jsNative
 let parseString (s:string) =
   parseJson ((s.Replace("\r\n", "\\n")).Replace("\n", "\\n"))
 
+let escaped (s:string) =
+  parseString ("\"" + s.Replace("\"", "\\\"") + "\"")
+
 let fixNumber (s:string) = s.Replace("_", "")
 ]%
 
 Crochet : Program {
   program =
-    | header ds:declaration* space* end
+    | header ds:declarations space* end
       %[ program ds ]%
 
 
   // -- Declarations
+  declarations =
+    | xs:listOf<declaration, s<";">> s<";">?    %[ xs ]%
+
   declaration =
     | actorDeclaration
     | relationDeclaration
+    | actionDeclaration
+    | beforeDeclaration
+    | afterDeclaration
     | doDeclaration
 
   actorDeclaration =
-    | actor_ n:actorName s<";">
+    | actor_ n:actorName
       %[ DActor n ]%
 
   relationDeclaration =
-    | relation_ s:logicSignature<relationPart> ";"
+    | relation_ s:logicSignature<relationPart>
       %[ DRelation s ]%
 
   relationPart =
@@ -43,14 +52,64 @@ Crochet : Program {
     | n:name
       %[ RPTOne n ]%
 
+  actionDeclaration =
+    | action_ t:interpolateText<name> when_ p:predicate b:statementBlock<logicStmt>
+      %[ DAction(t, p, b) ]%
+    
+  beforeDeclaration =
+    | before_ p:predicate b:statementBlock<logicStmt>
+      %[ DBefore(p, b) ]%
+
+  afterDeclaration =
+    | after_ p:predicate b:statementBlock<logicStmt>
+      %[ DAfter(p, b) ]%
+
   doDeclaration =
-    | do_ statementBlock<statements>
+    | do_ xs:statementBlock<logicStmt>
+      %[ DDo xs ]%
+
+
+  // -- More logic
+  predicate =
+    | cs:nonemptyLisOf<clause, s<",">> if_ c:constraint
+      %[ predicate cs c ]%
+    | cs:nonemptyListOf<clause, s<",">>
+      %[ predicate cs (CLiteral LTrue) ]%
+
+  constraint =
+    | l:constraint op:constraintOp r:constraint
+      %[ CBinOp (op, l, r) ]%
+    | not_ l:constraint
+      %[ CNot l ]%
+    | n:name
+      %[ CVariable n ]%
+    | l:literal
+      %[ CLiteral l ]%
+
+  constraint_op =
+    | and_        %[ OpAnd ]%
+    | or_         %[ OpOr ]%
+    | s<"===">    %[ OpEq ]%
+    | s<"=/=">    %[ OpNotEq ]%
+    | s<">">      %[ OpGt ]%
+    | s<">=">     %[ OpGte ]%
+    | s<"<">      %[ OpLt ]%
+    | s<"<=">     %[ OpLte ]%
 
 
   // -- Statements
-  statements =
+  statement =
+    | letStatement
+    | e:expression    %[ SExpression e ]%
+
+  logicStmt =
     | factStatement
     | forgetStatement
+    | statement
+  
+  letStatement =
+    | let_ n:name s<"="> e:expression
+      %[ SLet (n, e) ]%
   
   factStatement =
     | fact_ f:logicSignature<expression>
@@ -66,22 +125,24 @@ Crochet : Program {
     | primaryExpression
 
   primaryExpression =
-    | x:integer   %[ EInteger x ]%
-    | x:text      %[ EText x ]%
-    | nothing     %[ ENothing ]%
-    | true        %[ ETrue ]%
+    | n:actor_name          %[ EActor n ]%
+    | l:literal             %[ ELiteral l ]%
+    | "(" e:expression ")"  %[ e ]%
+
+  literal =
+    | integer | text | nothing | true
 
   // -- Primitives
-  integer = t_integer
-  float = t_float
-  text = t_text
-  true = true_
-  nothing = nothing_
+  integer = x:t_integer   %[ LInteger x ]%
+  text = x:t_text         %[ LText x ]%
+  true = true_            %[ LTrue ]%
+  nothing = nothing_      %[ LFalse ]%
+  actor_name = t_actor_name
 
 
   // -- Higher-Order
   statementBlock<typ> =
-    | s<"{"> xs:nonemptyListOf<type, s<";">> ";"? s<"}">
+    | s<"{"> xs:listOf<type, s<";">> s<";">? s<"}">
       %[ xs ]%
 
   logicSignature<t> =
@@ -96,6 +157,15 @@ Crochet : Program {
 
   s<p> = space* p
 
+
+  // -- Interpolation
+  interpolateTextPart<p> =
+    | "\\" x:any                 %[ TPStatic (escaped x) ]%
+    | "[" x:s<p> s<"]">          %[ TPDynamic x ]%
+    | ~"\"" x:any                %[ TPStatic x ]%
+
+  interpolateText<p> (a text with interpolation) =
+    | s<"\""> interpolateTextPart<p>* "\""
 
   // -- Lexical rules -------------------------------------------------
   header (a file header) = "%" hs* "crochet" nl

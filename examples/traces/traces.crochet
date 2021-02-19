@@ -19,9 +19,15 @@ actor #main;
 relation Chapter chapter;
 relation turn Number;
 relation flag Flag*;
+relation stage Stage;
 
 actor #flag-looked-around;
 actor #flag-can-go-outside;
+
+actor #stage-room;
+actor #stage-bookshelf;
+actor #stage-bar;
+actor #stage-kitchen;
 
 do {
   fact "was" for "they" conjugated "were";
@@ -116,9 +122,8 @@ scene prologue {
 
   say:
     "There was a certain point in the day---you didn't keep track of the
-    hours anymore, time remained constant in the cabin. There was a certain
-    point in the day where you would get up from the sofa and go through
-    all of the things laying about.";
+    hours anymore, time remained constant in the cabin---you would get up
+    from the sofa and go through all of the things laying about.";
 
   say:
     "Maybe, this time, you could piece things together in a way that made sense.";
@@ -163,6 +168,7 @@ when #prologue chapter {
 scene main {
   fact #main chapter;
   fact turn 0;
+  fact stage #stage-room;
   goto main-loop;
 }
 
@@ -184,7 +190,8 @@ scene ending {
 
 action "Go outside"
 when
-  #main chapter
+  #main chapter,
+  stage #stage-room
 {
   say:
     "You turn the doorknob. The door opens.";
@@ -222,7 +229,7 @@ when
 action "Look around"
 when
   #main chapter,
-  not flag #flag-looked-around
+  stage #stage-room
 {
   say:
     "The old log cabin is much too dim to see things clearly. But by now your
@@ -245,26 +252,38 @@ when
   fact flag #flag-looked-around;
 }
 
-action "Examine bookshelf"
+repeatable action "Examine bookshelf"
 when
   #main chapter,
-  flag #flag-looked-around
+  flag #flag-looked-around,
+  stage #stage-room
 {
-
+  fact stage #stage-bookshelf;
 }
 
-action "Examine bar"
+repeatable action "Examine bar"
 when
   #main chapter,
-  flag #flag-looked-around
+  flag #flag-looked-around,
+  stage #stage-room
 {
-
+  fact stage #stage-bar;
 }
 
-action "Examine kitchen"
+repeatable action "Examine kitchen"
 when
   #main chapter,
-  flag #flag-looked-around
+  flag #flag-looked-around,
+  stage #stage-room
 {
+  fact stage #stage-kitchen;
+}
 
+repeatable action "Take a step back"
+:: sticky
+when
+  #main chapter,
+  not stage #stage-room
+{
+  fact stage #stage-room;
 }

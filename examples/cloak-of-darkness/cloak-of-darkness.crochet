@@ -2,6 +2,7 @@
 
 relation Item* name: Name;
 relation Item* description: Description;
+relation Item* short-description: Description;
 relation Room* to: Direction* lays: Room;
 relation Room* lit;
 relation Player* visited: Room*;
@@ -10,31 +11,36 @@ relation Room* times-disturbed: N;
 relation Player* at: Room;
 relation Item* on: Place;
 
+predicate Room is-reachable-by: Direction {
+  when
+    #player at: Place,
+    Place to: Direction lays: Room
+    if Room =/= #street {}
+}
+
 actor #street;
 
 actor #foyer :: room {
   name: "The Foyer";
-  description: "An empty room. There's nobody around.";
   to: "south" lays: #bar;
   to: "west" lays: #cloakroom;
   to: "north" lays: #street;
   lit;
+
+  
 }
 
 actor #bar :: room {
   name: "The Bar";
-  description: "It's dark here. You're afraid you would disturb something.";
   to: "north" lays: #foyer;
   times-disturbed: 0;
 }
 
 actor #cloakroom :: room {
   name: "The Cloakroom";
-  description: "There's a small brass hook fixed on the wall.";
   to: "east" lays: #foyer;
   lit;
 }
-
 
 actor #cloakroom-floor :: place {
   name: "The cloakroom's floor";
@@ -56,6 +62,7 @@ actor #cloak :: item, wearable {
 
 actor #player :: player {
   at: #foyer;
+  visited: #street;
 }
 
 do {
@@ -88,29 +95,30 @@ scene main-loop {
   goto main-loop;
 }
 
+// Navigation
 repeatable action "Go [Direction]"
 when
-  #player at: Room,
-  Room to: Direction lays: Target,
-  Target name: Name,
-  Target description: Description
-  if Target =/= #street
+  Room is-reachable-by: Direction,
+  Room description: Description,
+  not #player visited: Room
 {
-  fact #player at: Target;
-  say: Name;
+  fact #player at: Room;
+  fact #player visited: Room;
   say: Description;
 }
 
-repeatable action "Go [Direction]"
+repeatable action "Go [Direction], to [Name]"
 when
-  #player at: Room,
-  Room to: Direction lays: #street
+  Room is-reachable-by: Direction,
+  Room name: Name,
+  Room short-description: Description,
+  #player visited: Room
 {
-  say:
-    "You place your hands on the doorknob... and shudder at the mere
-    thought of going outside. You are NOT sitting in that snowstorm
-    again, not for a good few hours, at least.";
+  say: Description;
 }
+
+
+
 
 repeatable action "Look at yourself"
 when #player at: Room

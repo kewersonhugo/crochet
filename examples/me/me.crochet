@@ -1,0 +1,211 @@
+% crochet
+
+command wait-click = wait-click();
+
+command page {
+  wait-click;
+  new-page;
+}
+
+command player-say: Phrase {
+  match {
+    when X turn, X pov {
+      say: Phrase;
+    }
+  };
+}
+
+// ## Keeping track of who's acting and what's happening
+relation Actor turn;
+relation Topic current-topic;
+relation Topic* discussion-life: N;
+relation Chapter chapter;
+relation Actor pov;
+relation Actor* knows: Thing*;
+relation Actor* annoyed;
+relation Actor* sitting;
+
+// ## Chapters
+actor #pov-selection :: chapter;
+actor #introduction :: chapter;
+actor #main :: chapter;
+
+// ## Topics
+actor #topic-reunion :: topic;
+actor #topic-kristine-dress :: topic;
+actor #topic-kristine-ambiguous-smile :: topic;
+actor #topic-kristine-welcome :: topic;
+actor #topic-ange-asks-have-we-met :: topic;
+actor #topic-kristine-hair-accent :: topic;
+actor #topic-ange-remember-kristine-face :: topic;
+
+// ## Actors
+actor #ange :: player {}
+actor #kristine :: player {}
+
+// ## Mechanics
+do {
+  <<And yet, still me.>> title show;
+
+  fact #pov-selection chapter;
+  goto main-loop;
+}
+
+scene main-loop {
+  trigger action;
+  trigger reaction;
+  next-turn;
+  goto main-loop;
+}
+
+scene ending {}
+
+// ## The choice of point of view
+action <<The quiet café owner, Ange>>
+when #pov-selection chapter {
+  fact #ange pov;
+  fact #introduction chapter;
+}
+
+action <<The excentric mathematician, Kristine>>
+when #pov-selection chapter {
+  fact #kristine pov;
+  fact #introduction chapter;
+  say: <<This is not available yet.>>;
+}
+
+// ## Introduction
+context introduction
+when #introduction chapter {
+  when #ange pov {
+    say:
+    <<The scent of fresh coffee.>>;
+
+    say:  
+    <<It was these kind of days every day things that you got the most
+    enjoyment out of. Brewing had become one of your passions over the
+    last couple of years. Grinding the grains. Carefully pouring hot
+    water over them.>>;
+
+    say:
+    <<You didn't add any sugar, as was popular with the nobles from Illie.
+    But that was how you liked it.>>;
+
+    say:
+    <<Over the years your little café had become a sort of cult place among
+    some of the nobility. They would spend days in a train, travelling
+    from the capital to the rural Blem just to experience it.
+    "Coffee in the capital tastes quite different," was how one of your customers
+    explained that to you at one point.>>;
+
+    say:
+    <<You weren't complaining. Business was going well thanks to it.>>;
+
+    say:
+    <<At one point you did consider opening your shop in the capital---one of
+    your regular customers even said she would have sponsored it. But you
+    weren't quite sure you'd get used to life at the capital again. You liked
+    your life as it was now: quiet, peaceful, surrounded by greenery that
+    would be quite difficult to find at the steam-and-bricks-dominated
+    capital.>>;
+
+    say:
+    <<And most of your customers also wanted that change of pace. One woman
+    remarked your café reminded herself of the great library of Astelia.
+    A peaceful place where one could enjoy meaningful conversations. With
+    the added benefit of good food and drinks.>>;
+
+    say:
+    <<You did consider turning the place into a mix of a coffee shop and a
+    bookstore at one point, but that idea never gained much traction.>>;
+
+    say:
+    <<Your idle thoughts were interrupted by the arrival of another customer,
+    announced by the small bell on the door. The woman who now approached
+    the balcony wore a long, sleevless white dress, with the skirt having
+    its volume generously increased by the pannier. A brown lace-corset on
+    top and delicate white gloves completed the look. "Another noble," was
+    the first thought on your head.>>;
+
+    say:
+    <<She must have been in her late twenties---she looked young! Her attentive
+    blue eyes were running through the place before stopping on you. She smiled.
+    You couldn't quite make much out of her expression.>>;
+  }
+
+  do {
+    fact #topic-kristine-dress discussion-life: 2;
+    fact #topic-kristine-ambiguous-smile discussion-life: 2;
+    fact #topic-kristine-welcome discussion-life: 4;
+    fact #topic-kristine-welcome current-topic;
+    fact #main chapter;
+  }
+}
+
+action <<"Have we met before...?">>
+when
+  #ange turn,
+  #topic-kristine-welcome current-topic,
+  not #ange knows: #kristine
+{
+  player-say:
+  <<You had a vague recollection of the woman's face, but couldn't really
+  place a name on it. It had been years since you had moved out of the capital,
+  and at this point all noble women looked vaguely the same to you.>>;
+
+  say:
+  <<"Have we met before...?" [you ask], hesitantly.>>;
+
+  fact #topic-ange-asks-have-we-met discussion-life: 2;
+  fact #topic-ange-asks-have-we-met current-topic;
+  fact #kristine annoyed;
+}
+
+action <<Take a seat>>
+when
+  #kristine turn,
+  not #kristine sitting
+{
+  say:
+  <<['You] sat down on one of the chairs near the balcony. As you did,
+  ['your] slightly flowing hair revealed some bright pink accents>>;
+
+  fact #topic-kristine-hair-accent discussion-life: 4;
+  fact #kristine sitting;
+}
+
+action <<Has she forgotten about you?!>>
+when
+  #kristine turn,
+  #topic-ange-asks-have-we-met discussion-life: N,
+  #kristine annoyed
+  if N > 2
+{
+  say:
+  <<['You] shrug.>>;
+
+  player-say:
+  <<You can't believe Ange would forget about you in such a short amount of
+  time. You two used to be so close during your university days!>>;
+
+  fact #ange knows #kristine annoyed;
+}
+
+action <<"Ah, did I upset you?">>
+when
+  #ange turn,
+  #topic-ange-asks-have-we-met discussion-life: N,
+  #ange knows #kristine annoyed
+{
+  say:
+  <<"I'm sorry, I have a bad memory for names," [you explain], politely.
+  "I do remember your face..." [you pause] for a moment.>>
+  
+  player-say:
+  <<You wonder how to make this sound less rude, but nothing good comes
+  to mind.>>;
+  
+  say:
+  <<"Somewhat, at least," [you conclude].>>;
+}
+

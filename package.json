@@ -1,12 +1,16 @@
 {
+  "name": "@qteatime/crochet",
+  "version": "0.0.1",
   "bin": {
-    "crochet": "build/bin/crochet"
+    "crochet": "crochet.js"
   },
   "scripts": {
     "build": "tsc && npm run build-player",
-    "build-player": "browserify build/player/main.js -s Crochet -o templates/web/crochet.js"
+    "build-player": "browserify build/player/main.js -s Crochet -o templates/web/crochet.js",
+    "build-grammar": "fohm compile CrochetVM/grammar/crochet.ohm --name Crochet --outDir CrochetVM/generated"
   },
   "dependencies": {
+    "@origamitower/fohm": "^1.1.0",
     "@types/mkdirp": "^1.0.1",
     "@types/node": "^14.14.20",
     "@types/yargs": "^16.0.0",

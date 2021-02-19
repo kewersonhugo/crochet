@@ -1,0 +1,49 @@
+% crochet
+
+type #foyer :: room {
+  name: "The Foyer";
+  to: "south" lays: #bar;
+  to: "west" lays: #cloakroom;
+  to: "north" lays: #street;
+}
+
+type #bar :: room {
+  name: "The Bar";
+  to: "north" lays: #foyer;
+}
+
+type #cloakroom :: room {
+  name: "The Cloakroom";
+  to: "east" lays: #foyer;
+}
+
+
+type #player :: playable {
+  knows: #cloakroom-floor;
+  knows: #bar-floor;
+  knows: #cloak;
+}
+
+
+type #cloakroom-floor :: place {
+  on: #cloakroom;
+}
+
+type #hook :: place {
+  on: #cloakroom;
+}
+
+
+type #bar-floor :: place {
+  on: #bar;
+}
+
+type #message {
+  on: #bar-floor;
+}
+
+
+type #cloak :: wearable, pickable {
+  on: #player;
+}
+

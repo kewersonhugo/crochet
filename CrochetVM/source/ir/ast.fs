@@ -6,7 +6,9 @@ type Program = {
 
 and Declaration =
   | DActor of Name
-  | DRelation of Name * RelationType list
+  | DRelation of Name * RelationType
+  | DAction of InterpolateText<Name> * Predicate * Expression
+  | DEvent of EventType * Predicate * Expression
   | DDo of Expression
 
 and Expression =
@@ -31,8 +33,48 @@ and Literal =
   | LTrue
   | LFalse
 
+and Predicate = {
+  Clauses: Clause list
+  Constraint: Constraint
+}
+
+and Clause = (string * Pattern list)
+
+and Pattern =
+  | PLiteral of Literal
+  | PVariable of name:string
+  | PActor of name:string
+  | PWildcard
+
+and ConstraintOp =
+  | OpAnd
+  | OpOr
+  | OpEqual
+  | OpNotEqual
+  | OpGreaterThan
+  | OpGreaterOrEqual
+  | OpLessThan
+  | OpLessOrEqual
+
+and Constraint =
+  | CNot of Constraint
+  | CBinOp of ConstraintOp * Constraint * Constraint
+  | CLiteral of Literal
+  | CVariable of name:string
+
 and RelationType =
-  | RTOne
-  | RTMany
+  | RTOne of RelationType
+  | RTMany of RelationType
+  | RTEnd
+
+and InterpolateText<'t> = TextPart<'t> list
+
+and TextPart<'t> =
+  | TPStatic of string
+  | TPDynamic of 't
+
+and EventType =
+  | ETBefore
+  | ETAfter
 
 and Name = string

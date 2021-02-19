@@ -1,0 +1,155 @@
+% crochet
+
+relation Room* to: Direction* lays: Room;
+relation Player* visited: Room*;
+relation Player* examined: Room*;
+relation Room* times-disturbed: N;
+relation Player* at: Room;
+relation Player* knows: Item*;
+relation Item* on: Place;
+relation Status game;
+
+predicate Room reachable-by: Direction {
+  when
+    #player at: Place,
+    Place to: Direction lays: Room
+    if Room =/= #street;
+}
+
+predicate Room lit {
+  when
+    #player at: #bar,
+    not #cloak on: #player;
+
+  when not #player at: #bar;
+}
+
+predicate Item visible-at: Room {
+  when Item on: #player;
+
+  when Item on: Room;
+  
+  when
+    Item on: Place,
+    #player knows: Place,
+    Place visible-at: Room,
+    if Place :: place;
+}
+
+type #foyer :: room {
+  name: "The Foyer";
+  to: "south" lays: #bar;
+  to: "west" lays: #cloakroom;
+  to: "north" lays: #street;
+}
+
+type #bar :: room {
+  name: "The Bar";
+  to: "north" lays: #foyer;
+}
+
+type #cloakroom :: room {
+  name: "The Cloakroom";
+  to: "east" lays: #foyer;
+}
+
+type #player {
+  knows: #floor;
+  knows: #cloak;
+};
+
+type #hook :: place {
+  on: #cloakroom;
+}
+
+type #cloakroom-floor :: place {
+  on: #cloakroom;
+}
+
+type #bar-floor :: place {
+  on: #bar;
+}
+
+type #message {
+  on: #bar-floor;
+}
+
+type #cloak :: wearable, pickable {
+  on: #player;
+}
+
+active context navigation {
+  action "Go [Direction]"
+  when
+    Room reachable-by: Direction
+  {
+    fact #player at: Room;
+    fact #player visited: Room;
+  }
+
+  before #player at: #street {
+    fail;
+  }
+}
+
+active context examination {
+  action "Look at yourself" {}
+
+  action "Look around"
+  when Room lit {
+    fact #player examined: Room
+  }
+
+  action "Look around"
+  when not Room lit, Room times-disturbed: N {
+    fact Room times-disturbed: N + 1;
+  }
+
+  action "Examine [Item]"
+  when #player at: Room, Item visible-at: Place {
+    fact #player knows: Item;
+  }
+
+  after
+    #player knows: #message,
+    #bar times-disturbed: N
+    if N < 2
+  {
+    fact "won" status;
+  }
+
+  after
+    #player knows: #message,
+    #bar times-disturbed: N
+    if N > 2
+  {
+    fact "lost" status;
+  }
+}
+
+active context placement {
+  action "Place [Item] on [Place]"
+  when
+    Item on: #player,
+    Player at: Room,
+    Place visible-at: Room,
+    Player knows: Place
+    if Place :: place
+  {
+    fact Item on: Place;
+  }
+
+  action "Take [Item] from [Place]"
+  when
+    Item on: Place,
+    Player at: Room,
+    Player knows: Place
+    if Place :: place and Item :: pickable
+  {
+    fact Item on: #player;
+  }
+}
+
+after Status status {
+  halt;
+}

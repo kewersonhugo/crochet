@@ -1,0 +1,8 @@
+{
+  "package": "web",
+  "title": "And yet, still me",
+  "source": "me.crochet",
+  "output_directory": "www",
+  "html": "index.html.template",
+  "assets": ["ui.js"]
+}
